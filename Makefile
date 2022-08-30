@@ -43,7 +43,7 @@ DOCKERCMD?=docker
 
 
 .PHONY: all
-all: clean test build 
+all: clean build 
 
 .PHONY: clean
 # Remove build files
