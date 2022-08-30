@@ -1,7 +1,4 @@
 # Constants for the Makefile in charge of building the executable
 
 # Name of the project
-PROJECT_NAME=go-template
-
-# Bin targets of the project
-CURRENT_BIN_TARGETS=dummy pummy
+PROJECT_NAME=oam-utils
