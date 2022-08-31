@@ -1,4 +1,4 @@
-module github.com/napptive/go-template
+module github.com/napptive/oam-utils
 
 go 1.16
 
