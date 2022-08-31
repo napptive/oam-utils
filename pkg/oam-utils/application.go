@@ -68,31 +68,33 @@ type Application struct {
 	obj *unstructured.Unstructured
 }
 
-// NewApplication converts an oam application from a yaml file into an Application
-func NewApplication(file []byte) (*Application, error) {
-	resources, err := splitYAMLFile([]byte(file))
-	if err != nil {
-		log.Error().Err(err).Msg("error getting application name")
-		return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
-	}
-
-	for _, entity := range resources {
-		// check if the YAML contains an application
-		isApp, app, err := isApplication(entity)
+// NewApplication converts an oam application from an array of yaml files into an Application
+func NewApplication(files [][]byte) (*Application, error) {
+	for _, file := range files {
+		resources, err := splitYAMLFile([]byte(file))
 		if err != nil {
-			log.Error().Err(err).Msg("error getting the application file")
+			log.Error().Err(err).Msg("error getting application name")
 			return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
 		}
-		if *isApp {
-			var appDefinition ApplicationDefinition
-			if err := convert(app, &appDefinition); err != nil {
-				log.Error().Err(err).Msg("error converting application")
+
+		for _, entity := range resources {
+			// check if the YAML contains an application
+			isApp, app, err := isApplication(entity)
+			if err != nil {
+				log.Error().Err(err).Msg("error getting the application file")
 				return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
 			}
-			return &Application{
-				App: appDefinition,
-				obj: app,
-			}, nil
+			if *isApp {
+				var appDefinition ApplicationDefinition
+				if err := convert(app, &appDefinition); err != nil {
+					log.Error().Err(err).Msg("error converting application")
+					return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
+				}
+				return &Application{
+					App: appDefinition,
+					obj: app,
+				}, nil
+			}
 		}
 	}
 

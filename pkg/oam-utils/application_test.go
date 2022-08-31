@@ -126,7 +126,8 @@ spec:
 var _ = ginkgo.Describe("Handler test on log calls", func() {
 
 	ginkgo.It("Should be able to return the application name", func() {
-		app, err := NewApplication([]byte(fileWithWorkflow))
+		files := [][]byte{[]byte(fileWithWorkflow)}
+		app, err := NewApplication(files)
 		gomega.Expect(err).Should(gomega.Succeed())
 		gomega.Expect(app).ShouldNot(gomega.BeNil())
 
@@ -144,7 +145,8 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 	})
 
 	ginkgo.It("Should be able to return the application name when the file contains several applications", func() {
-		app, err := NewApplication([]byte(ComposedFile))
+		files := [][]byte{[]byte(ComposedFile)}
+		app, err := NewApplication(files)
 		gomega.Expect(err).Should(gomega.Succeed())
 		gomega.Expect(app).ShouldNot(gomega.BeNil())
 
@@ -153,8 +155,20 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 		gomega.Expect(name).Should(gomega.Equal("nginx-app1"))
 	})
 
+	ginkgo.It("Should be able to return the application name receiving two files", func() {
+		files := [][]byte{[]byte(filewithoutApplication), []byte(fileWithWorkflow)}
+		app, err := NewApplication(files)
+		gomega.Expect(err).Should(gomega.Succeed())
+		gomega.Expect(app).ShouldNot(gomega.BeNil())
+
+		name := app.GetName()
+		gomega.Expect(name).ShouldNot(gomega.BeEmpty())
+		gomega.Expect(name).Should(gomega.Equal("app"))
+	})
+
 	ginkgo.It("Should be able to return the application name in a multiple YAML file", func() {
-		app, err := NewApplication([]byte(applicationFile))
+		files := [][]byte{[]byte(applicationFile)}
+		app, err := NewApplication(files)
 		gomega.Expect(err).Should(gomega.Succeed())
 		gomega.Expect(app).ShouldNot(gomega.BeNil())
 
@@ -171,7 +185,8 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 	})
 
 	ginkgo.It("should not be able to create an applicacion when it does not exist", func() {
-		_, err := NewApplication([]byte(filewithoutApplication))
+		files := [][]byte{[]byte(filewithoutApplication)}
+		_, err := NewApplication(files)
 		gomega.Expect(err).ShouldNot(gomega.Succeed())
 	})
 })
