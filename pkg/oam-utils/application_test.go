@@ -18,10 +18,17 @@ package oam_utils
 import (
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
-	"github.com/rs/zerolog/log"
 )
 
 const applicationFile = (`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-test
+data:
+  cpu: "0.50"
+  memory: "250Mi"
+---
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
@@ -32,6 +39,42 @@ metadata:
 spec:
   components:
     - name: nginx
+      type: webservice
+      properties:
+        image: nginx:1.20.0
+        ports:
+        - port: 80
+          expose: true
+`)
+
+const ComposedFile = (`
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: nginx-app1
+  annotations:
+    version: v1.0.0
+    description: "Customized version of nginx"
+spec:
+  components:
+    - name: nginx1
+      type: webservice
+      properties:
+        image: nginx:1.20.0
+        ports:
+        - port: 80
+          expose: true
+---
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: nginx-app2
+  annotations:
+    version: v1.0.0
+    description: "Customized version of nginx"
+spec:
+  components:
+    - name: nginx2
       type: webservice
       properties:
         image: nginx:1.20.0
@@ -54,10 +97,10 @@ const fileWithWorkflow = `
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: apply-application-in-parallel
+  name: app
   annotations: 
     version: "v0.0.1"
-    description: "My annotations application"
+    description: "My app"
 spec:
   components:
     - name: component1
@@ -98,7 +141,33 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 		gomega.Expect(err).Should(gomega.Succeed())
 		gomega.Expect(conversion).ShouldNot(gomega.BeEmpty())
 
-		log.Info().Str("YAML", string(conversion)).Msg("YAML Application")
+	})
+
+	ginkgo.It("Should be able to return the application name when the file contains several applications", func() {
+		app, err := NewApplication([]byte(ComposedFile))
+		gomega.Expect(err).Should(gomega.Succeed())
+		gomega.Expect(app).ShouldNot(gomega.BeNil())
+
+		name := app.GetName()
+		gomega.Expect(name).ShouldNot(gomega.BeEmpty())
+		gomega.Expect(name).Should(gomega.Equal("nginx-app1"))
+	})
+
+	ginkgo.It("Should be able to return the application name in a multiple YAML file", func() {
+		app, err := NewApplication([]byte(applicationFile))
+		gomega.Expect(err).Should(gomega.Succeed())
+		gomega.Expect(app).ShouldNot(gomega.BeNil())
+
+		newName := "changed"
+		// Set Name
+		app.SetName(newName)
+
+		name := app.GetName()
+		gomega.Expect(name).Should(gomega.Equal(name))
+
+		conversion, err := app.ToYAML()
+		gomega.Expect(err).Should(gomega.Succeed())
+		gomega.Expect(conversion).ShouldNot(gomega.BeEmpty())
 	})
 
 	ginkgo.It("should not be able to create an applicacion when it does not exist", func() {
