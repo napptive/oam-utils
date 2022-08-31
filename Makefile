@@ -44,3 +44,9 @@ test:
 	@echo "Executing golang tests"
 	@$(GO_TEST) -v ./...
 
+.PHONY: coverage
+# Create a coverage report for all golang files in the curdir
+coverage:
+	@echo "Creating golang test coverage report: $(BUILD_FOLDER)/coverage.out"
+	@mkdir -p $(BUILD_FOLDER)
+	@$(GO_TEST) -v ./... -coverprofile=$(BUILD_FOLDER)/cover.out
