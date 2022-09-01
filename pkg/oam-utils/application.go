@@ -175,6 +175,8 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 		log.Warn().Msg("Error creating application, no application received")
 	}
 
+	log.Debug().Int("apps", len(apps)).Int("entities", len(entities)).Msg("Apps configuration")
+
 	return &Application{
 		apps:     apps,
 		objs:     objs,
@@ -195,9 +197,6 @@ func (a *Application) GetNames() map[string]string {
 // ApplyParameters overwrite the application name and the components spec in application named `applicationName`
 // TODO: implement ComponentSpec management
 func (a *Application) ApplyParameters(applicationName string, newName string, componentsSpec string) error {
-
-	log.Debug().Int("apps", len(a.apps)).Int("entities", len(a.entities)).Msg("---")
-
 	if len(a.apps) == 0 {
 		return nerrors.NewNotFoundError("there is no applications to apply parameters")
 	}
