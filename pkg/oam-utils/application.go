@@ -38,36 +38,43 @@ type Metadata struct {
 	Labels map[string]string `json:"labels,omitempty"`
 }
 
-type ApplicationComponent struct {
-	Name       string                `json:"name"`
-	Type       string                `json:"type"`
-	Properties *runtime.RawExtension `json:"properties,omitempty"`
-}
-
+// AppPolicy with the application policy
 type AppPolicy struct {
-	Name       string                `json:"name"`
-	Type       string                `json:"type"`
+	// Name of the policy
+	Name string `json:"name"`
+	// Type of the policy
+	Type string `json:"type"`
+	// Properties of the policy
 	Properties *runtime.RawExtension `json:"properties,omitempty"`
 }
 
+// ApplicationSpec with the application specification
 type ApplicationSpec struct {
+	// Components of the applcication
 	Components *runtime.RawExtension `json:"components"`
-	Policies   []AppPolicy           `json:"policies,omitempty"`
-	Workflow   *runtime.RawExtension `json:"workflow,omitempty"`
+	// Policies of the application
+	Policies []AppPolicy `json:"policies,omitempty"`
+	// Workflow with the workflowsteps of the application
+	Workflow *runtime.RawExtension `json:"workflow,omitempty"`
 }
 
+// ApplicationDefinnition with the definition of an OAM application
 type ApplicationDefinition struct {
-	ApiVersion string          `json:"apiVersion"`
-	Kind       string          `json:"kind"`
-	Metadata   Metadata        `json:"metadata"`
-	Spec       ApplicationSpec `json:"spec"`
+	// ApiVersion
+	ApiVersion string `json:"apiVersion"`
+	// Kind
+	Kind string `json:"kind"`
+	// Metadata
+	Metadata Metadata `json:"metadata"`
+	// Spec
+	Spec ApplicationSpec `json:"spec"`
 }
 
-// Application with an oam application
+// Application with an catalog application
 type Application struct {
-	// App with a map of applications definition indexed by application the name
+	// App with a map of OAM applications indexed by application the name
 	apps map[string]*ApplicationDefinition
-	// obj with map of the application stored as unstructured indexed by the name
+	// obj with map of the OAM applications stored as unstructured indexed by the name
 	objs map[string]*unstructured.Unstructured
 	// entities with an array of other entities
 	entities [][]byte
@@ -162,9 +169,10 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 
 		}
 	}
+	// TODO: Creo q no deberíamos soltar este error ahora q tb guardamos las entidades (ComponentDefinition, p.e.)
 	if len(apps) == 0 {
 		log.Error().Msg("Error creating application, no application received")
-		return nil, nerrors.NewNotFoundError("error creating application, no application found")
+		//return nil, nerrors.NewNotFoundError("error creating application, no application found")
 	}
 
 	return &Application{
