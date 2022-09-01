@@ -69,25 +69,32 @@ type Application struct {
 }
 
 // NewApplication converts an oam application from an array of yaml files into an Application
-func NewApplication(files [][]byte) (*Application, error) {
+func NewApplication(files []*ApplicationFile) (*Application, error) {
 	for _, file := range files {
-		resources, err := splitYAMLFile([]byte(file))
+
+		// check if the file is a yaml File
+		if !isYAMLFile(file.FileName) {
+			log.Info().Str("file", file.FileName).Msg("skipping the file")
+			continue
+		}
+
+		resources, err := splitYAMLFile([]byte(file.Content))
 		if err != nil {
-			log.Error().Err(err).Msg("error getting application name")
-			return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
+			log.Error().Err(err).Str("File", file.FileName).Msg("error getting application name")
+			return nil, nerrors.NewInternalErrorFrom(err, "cannot create application, error in file: %s", file.FileName)
 		}
 
 		for _, entity := range resources {
 			// check if the YAML contains an application
 			isApp, app, err := isApplication(entity)
 			if err != nil {
-				log.Error().Err(err).Msg("error getting the application file")
-				return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
+				log.Error().Err(err).Str("File", file.FileName).Msg("error getting the application file")
+				return nil, nerrors.NewInternalErrorFrom(err, "error creating application, error in file: %s", file.FileName)
 			}
 			if *isApp {
 				var appDefinition ApplicationDefinition
 				if err := convert(app, &appDefinition); err != nil {
-					log.Error().Err(err).Msg("error converting application")
+					log.Error().Err(err).Str("File", file.FileName).Msg("error converting application")
 					return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
 				}
 				return &Application{
@@ -105,18 +112,18 @@ func NewApplication(files [][]byte) (*Application, error) {
 // isApplication returns a boolean indicating if the entity received is an application
 // if it is, return it in an unstructured
 func isApplication(entity []byte) (*bool, *unstructured.Unstructured, error) {
-
+	isApp := false
 	// - Decode YAML manifest into unstructured.Unstructured
 	var decUnstructured = yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 
 	unsObj := &unstructured.Unstructured{}
 	_, gvk, err := decUnstructured.Decode(entity, nil, unsObj)
 	if err != nil {
-		log.Error().Err(err).Msg("error checking if the file contains an application")
-		return nil, nil, nerrors.NewInternalErrorFrom(err, "error checking if the file contains an application")
+		log.Warn().Err(err).Msg("error checking if the file contains an application, might not contain be an entity")
+		return &isApp, nil, nil
 	}
 
-	isApp := gvk.Group == applicationGVK.Group && gvk.Kind == applicationGVK.Kind && gvk.Version == applicationGVK.Version
+	isApp = gvk.Group == applicationGVK.Group && gvk.Kind == applicationGVK.Kind && gvk.Version == applicationGVK.Version
 
 	return &isApp, unsObj, nil
 }

@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"strings"
 
 	"github.com/napptive/nerrors/pkg/nerrors"
 	"github.com/rs/zerolog/log"
@@ -62,4 +63,8 @@ func convert(unsObj *unstructured.Unstructured, converted interface{}) error {
 		return nerrors.NewInternalError("error converting struct")
 	}
 	return nil
+}
+
+func isYAMLFile(fileName string) bool {
+	return strings.HasSuffix(fileName, ".yaml") || strings.HasSuffix(fileName, ".yml")
 }
