@@ -196,6 +196,12 @@ func (a *Application) GetNames() map[string]string {
 // TODO: implement ComponentSpec management
 func (a *Application) ApplyParameters(applicationName string, newName string, componentsSpec string) error {
 
+	log.Debug().Int("apps", len(a.apps)).Int("entities", len(a.entities)).Msg("---")
+
+	if len(a.apps) == 0 {
+		return nerrors.NewNotFoundError("there is no applications to apply parameters")
+	}
+
 	// check if the applicacion exists
 	app, exists := a.apps[applicationName]
 	if !exists {
