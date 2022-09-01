@@ -32,13 +32,13 @@ data:
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: nginx-app
+  name: appapplication
   annotations:
     version: v1.0.0
     description: "Customized version of nginx"
 spec:
   components:
-    - name: nginx
+    - name: component1
       type: webservice
       properties:
         image: nginx:1.20.0
@@ -51,7 +51,7 @@ const ComposedFile = (`
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: nginx-app1
+  name: app1
   annotations:
     version: v1.0.0
     description: "Customized version of nginx"
@@ -68,7 +68,7 @@ spec:
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: nginx-app2
+  name: app2
   annotations:
     version: v1.0.0
     description: "Customized version of nginx"
@@ -97,7 +97,7 @@ const fileWithWorkflow = `
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: app
+  name: appWithWorkflow
   annotations: 
     version: "v0.0.1"
     description: "My app"
@@ -132,6 +132,22 @@ const readme = `
 
 var _ = ginkgo.Describe("Handler test on log calls", func() {
 
+	ginkgo.Context("Creating application", func() {
+
+	})
+
+	ginkgo.Context("Getting names", func() {
+
+	})
+
+	ginkgo.Context("Applying parameters", func() {
+
+	})
+
+	ginkgo.Context("Generating YAML", func() {
+
+	})
+
 	ginkgo.It("Should be able to return the application name", func() {
 		files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(fileWithWorkflow)}}
 		app, err := NewApplication(files)
@@ -140,10 +156,11 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 
 		newName := "changed"
 		// Set Name
-		app.SetName(newName)
+		app.ApplyParameters("appWithWorkflow", newName, "")
 
-		name := app.GetName()
-		gomega.Expect(name).Should(gomega.Equal(name))
+		name := app.GetNames()
+		gomega.Expect(len(name)).ShouldNot(gomega.BeZero())
+		gomega.Expect(name["appWithWorkflow"]).Should(gomega.Equal(newName))
 
 		conversion, err := app.ToYAML()
 		gomega.Expect(err).Should(gomega.Succeed())
@@ -159,9 +176,6 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 		gomega.Expect(err).Should(gomega.Succeed())
 		gomega.Expect(app).ShouldNot(gomega.BeNil())
 
-		name := app.GetName()
-		gomega.Expect(name).Should(gomega.Equal(name))
-
 	})
 
 	ginkgo.It("Should be able to return the application name when the file contains several applications", func() {
@@ -170,9 +184,10 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 		gomega.Expect(err).Should(gomega.Succeed())
 		gomega.Expect(app).ShouldNot(gomega.BeNil())
 
-		name := app.GetName()
+		name := app.GetNames()
 		gomega.Expect(name).ShouldNot(gomega.BeEmpty())
-		gomega.Expect(name).Should(gomega.Equal("nginx-app1"))
+		gomega.Expect(name["app1"]).Should(gomega.Equal("app1"))
+		gomega.Expect(name["app2"]).Should(gomega.Equal("app2"))
 	})
 
 	ginkgo.It("Should be able to return the application name receiving two files", func() {
@@ -184,9 +199,9 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 		gomega.Expect(err).Should(gomega.Succeed())
 		gomega.Expect(app).ShouldNot(gomega.BeNil())
 
-		name := app.GetName()
-		gomega.Expect(name).ShouldNot(gomega.BeEmpty())
-		gomega.Expect(name).Should(gomega.Equal("app"))
+		names := app.GetNames()
+		gomega.Expect(names).ShouldNot(gomega.BeEmpty())
+		gomega.Expect(names["appWithWorkflow"]).Should(gomega.Equal("appWithWorkflow"))
 	})
 
 	ginkgo.It("Should be able to return the application name in a multiple YAML file", func() {
@@ -197,10 +212,10 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 
 		newName := "changed"
 		// Set Name
-		app.SetName(newName)
+		app.ApplyParameters("appapplication", newName, "")
 
-		name := app.GetName()
-		gomega.Expect(name).Should(gomega.Equal(name))
+		name := app.GetNames()
+		gomega.Expect(name["appapplication"]).Should(gomega.Equal(newName))
 
 		conversion, err := app.ToYAML()
 		gomega.Expect(err).Should(gomega.Succeed())
@@ -222,8 +237,8 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 		gomega.Expect(err).Should(gomega.Succeed())
 		gomega.Expect(app).ShouldNot(gomega.BeNil())
 
-		name := app.GetName()
-		gomega.Expect(name).Should(gomega.Equal(name))
+		names := app.GetNames()
+		gomega.Expect(names["appWithWorkflow"]).Should(gomega.Equal("appWithWorkflow"))
 
 	})
 })

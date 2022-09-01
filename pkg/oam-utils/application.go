@@ -16,7 +16,11 @@ limitations under the License.
 package oam_utils
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
+	"io"
 
 	"github.com/napptive/nerrors/pkg/nerrors"
 	"github.com/rs/zerolog/log"
@@ -62,14 +66,61 @@ type ApplicationDefinition struct {
 
 // Application with an oam application
 type Application struct {
-	// App with the application definition
-	App ApplicationDefinition
-	// obj with the application stored as unstructured
-	obj *unstructured.Unstructured
+	// App with a map of applications definition indexed by application the name
+	apps map[string]*ApplicationDefinition
+	// obj with map of the application stored as unstructured indexed by the name
+	objs map[string]*unstructured.Unstructured
+	// entities with an array of other entities
+	entities [][]byte
+}
+
+// NewApplicationFromTGZ receives a tgz file and returns convert the content into an application
+func NewApplicationFromTGZ(rawApplication []byte) (*Application, error) {
+	files := make([]*ApplicationFile, 0)
+
+	br := bytes.NewReader(rawApplication)
+	uncompressedStream, err := gzip.NewReader(br)
+	if err != nil {
+		log.Error().Err(err).Msg("error creating applciation from tgz")
+		return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
+	}
+	tarReader := tar.NewReader(uncompressedStream)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Error().Err(err).Msg("error creating applciation from tgz")
+			return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			log.Debug().Str("name", header.Name).Msg("is a directory")
+		case tar.TypeReg:
+			data, err := io.ReadAll(tarReader)
+			if err != nil {
+				return nil, nerrors.NewInternalErrorFrom(err, "error creating application, error reading %s file", header.Name)
+			}
+			files = append(files, &ApplicationFile{
+				FileName: header.Name,
+				Content:  data,
+			})
+		default:
+			log.Warn().Str("type", string(header.Typeflag)).Msg("ignoring compressed type")
+		}
+	}
+	return NewApplication(files)
 }
 
 // NewApplication converts an oam application from an array of yaml files into an Application
 func NewApplication(files []*ApplicationFile) (*Application, error) {
+
+	apps := make(map[string]*ApplicationDefinition, 0)
+	objs := make(map[string]*unstructured.Unstructured, 0)
+	entities := [][]byte{}
+
 	for _, file := range files {
 
 		// check if the file is a yaml File
@@ -80,7 +131,7 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 
 		resources, err := splitYAMLFile([]byte(file.Content))
 		if err != nil {
-			log.Error().Err(err).Str("File", file.FileName).Msg("error getting application name")
+			log.Error().Err(err).Str("File", file.FileName).Msg("error split application file")
 			return nil, nerrors.NewInternalErrorFrom(err, "cannot create application, error in file: %s", file.FileName)
 		}
 
@@ -97,16 +148,24 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 					log.Error().Err(err).Str("File", file.FileName).Msg("error converting application")
 					return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
 				}
-				return &Application{
-					App: appDefinition,
-					obj: app,
-				}, nil
+				apps[appDefinition.Metadata.Name] = &appDefinition
+				objs[appDefinition.Metadata.Name] = app
+			} else {
+				entities = append(entities, entity)
 			}
 		}
 	}
+	if len(apps) == 0 {
 
-	log.Error().Msg("Error creating application, no application received")
-	return nil, nerrors.NewNotFoundError("error creating application, no application found")
+		log.Error().Msg("Error creating application, no application received")
+		return nil, nerrors.NewNotFoundError("error creating application, no application found")
+	}
+
+	return &Application{
+		apps:     apps,
+		objs:     objs,
+		entities: entities,
+	}, nil
 }
 
 // isApplication returns a boolean indicating if the entity received is an application
@@ -129,38 +188,65 @@ func isApplication(entity []byte) (*bool, *unstructured.Unstructured, error) {
 }
 
 // GetName returns the application name
-func (a *Application) GetName() string {
-	return a.App.Metadata.Name
+func (a *Application) GetNames() map[string]string {
+
+	names := make(map[string]string, 0)
+	for name, application := range a.apps {
+		names[name] = application.Metadata.Name
+	}
+	return names
 }
 
-// SetName updates the application name
-func (a *Application) SetName(name string) {
-	a.App.Metadata.Name = name
+// ApplyParameters overwrite the application name and the components spec in application named `applicationName`
+// TODO: implement ComponentSpec management
+func (a *Application) ApplyParameters(applicationName string, newName string, componentsSpec string) error {
+
+	// check if the applicacion exists
+	app, exists := a.apps[applicationName]
+	if !exists {
+		return nerrors.NewNotFoundError("application %s not found", applicationName)
+	}
+	if newName != "" {
+		app.Metadata.Name = newName
+	}
+
+	return nil
 }
 
 // ToYAML converts the application in YAML
 func (a *Application) ToYAML() ([]byte, error) {
 
-	jsonStr, err := json.Marshal(a.App)
-	if err != nil {
-		log.Error().Err(err).Msg("error parsing to JSON")
-		return nil, nerrors.NewInternalError("error converting to JSON")
+	var yamlFile []byte
+	separator := ("\n---\n")
+	for _, app := range a.apps {
+		jsonStr, err := json.Marshal(app)
+		if err != nil {
+			log.Error().Err(err).Msg("error parsing to JSON")
+			return nil, nerrors.NewInternalError("error converting to JSON")
+		}
+
+		// Convert the JSON to an object.
+		var jsonObj interface{}
+		err = yamlv3.Unmarshal(jsonStr, &jsonObj)
+		if err != nil {
+			log.Error().Err(err).Msg("error in Unmarshal ")
+			return nil, nerrors.NewInternalError("error converting to YAML")
+		}
+
+		// Marshal this object into YAML.
+		returned, err := yamlv3.Marshal(jsonObj)
+		if err != nil {
+			log.Error().Err(err).Msg("error in Marshal ")
+			return nil, nerrors.NewInternalError("error converting to YAML")
+		}
+
+		yamlFile = append(yamlFile, returned...)
+		yamlFile = append(yamlFile, []byte(separator)...)
+
 	}
 
-	// Convert the JSON to an object.
-	var jsonObj interface{}
-	err = yamlv3.Unmarshal(jsonStr, &jsonObj)
-	if err != nil {
-		log.Error().Err(err).Msg("error in Unmarshal ")
-		return nil, nerrors.NewInternalError("error converting to YAML")
-	}
+	// TODO: add entities
 
-	// Marshal this object into YAML.
-	returned, err := yamlv3.Marshal(jsonObj)
-	if err != nil {
-		log.Error().Err(err).Msg("error in Marshal ")
-		return nil, nerrors.NewInternalError("error converting to YAML")
-	}
-	return returned, nil
+	return yamlFile, nil
 
 }
