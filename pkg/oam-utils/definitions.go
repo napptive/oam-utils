@@ -25,3 +25,9 @@ var applicationGVK = schema.GroupVersionKind{
 	Version: "v1beta1",
 	Kind:    "Application",
 }
+
+// ApplicationFile with a struct that relates the name of a file to its content
+type ApplicationFile struct {
+	FileName string
+	Content []byte
+}
