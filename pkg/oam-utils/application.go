@@ -169,10 +169,10 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 
 		}
 	}
-	// TODO: Creo q no deberíamos soltar este error ahora q tb guardamos las entidades (ComponentDefinition, p.e.)
+	// a catalog application might not contain oam application.
+	// For example, if a user wants to store their component definitions
 	if len(apps) == 0 {
-		log.Error().Msg("Error creating application, no application received")
-		//return nil, nerrors.NewNotFoundError("error creating application, no application found")
+		log.Warn().Msg("Error creating application, no application received")
 	}
 
 	return &Application{
