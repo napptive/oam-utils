@@ -156,15 +156,17 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 
 		newName := "changed"
 		// Set Name
-		app.ApplyParameters("appWithWorkflow", newName, "")
+		err = app.ApplyParameters("appWithWorkflow", newName, "")
+		gomega.Expect(err).Should(gomega.Succeed())
 
 		name := app.GetNames()
 		gomega.Expect(len(name)).ShouldNot(gomega.BeZero())
 		gomega.Expect(name["appWithWorkflow"]).Should(gomega.Equal(newName))
 
-		conversion, err := app.ToYAML()
+		apps, entities, err := app.ToYAML()
 		gomega.Expect(err).Should(gomega.Succeed())
-		gomega.Expect(conversion).ShouldNot(gomega.BeEmpty())
+		gomega.Expect(apps).ShouldNot(gomega.BeEmpty())
+		gomega.Expect(entities).Should(gomega.BeEmpty())
 
 	})
 	ginkgo.It("Should be able to return the application name of a full application", func() {
@@ -212,14 +214,16 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 
 		newName := "changed"
 		// Set Name
-		app.ApplyParameters("appapplication", newName, "")
+		err = app.ApplyParameters("appapplication", newName, "")
+		gomega.Expect(err).Should(gomega.Succeed())
 
 		name := app.GetNames()
 		gomega.Expect(name["appapplication"]).Should(gomega.Equal(newName))
 
-		conversion, err := app.ToYAML()
+		apps, entities, err := app.ToYAML()
 		gomega.Expect(err).Should(gomega.Succeed())
-		gomega.Expect(conversion).ShouldNot(gomega.BeEmpty())
+		gomega.Expect(apps).ShouldNot(gomega.BeEmpty())
+		gomega.Expect(entities).ShouldNot(gomega.BeEmpty())
 	})
 
 	ginkgo.It("should not be able to create an applicacion when it does not exist", func() {

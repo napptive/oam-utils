@@ -27,7 +27,6 @@ import (
 	yamlv3 "gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 )
 
 type Metadata struct {
@@ -136,13 +135,16 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 		}
 
 		for _, entity := range resources {
-			// check if the YAML contains an application
-			isApp, app, err := isApplication(entity)
+
+			gvk, app, err := getGVK(entity)
 			if err != nil {
-				log.Error().Err(err).Str("File", file.FileName).Msg("error getting the application file")
-				return nil, nerrors.NewInternalErrorFrom(err, "error creating application, error in file: %s", file.FileName)
+				// YAML file without GVK is not a oam or kubernetes entity, not stored.
+				log.Warn().Str("File", file.FileName).Msg("yaml file without GVK")
+				continue
 			}
-			if *isApp {
+			switch getGVKType(gvk) {
+			// Application
+			case EntityType_APP:
 				var appDefinition ApplicationDefinition
 				if err := convert(app, &appDefinition); err != nil {
 					log.Error().Err(err).Str("File", file.FileName).Msg("error converting application")
@@ -150,13 +152,17 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 				}
 				apps[appDefinition.Metadata.Name] = &appDefinition
 				objs[appDefinition.Metadata.Name] = app
-			} else {
+				// Metadata
+			case EntityType_METADATA:
+				log.Debug().Str("file", file.FileName).Msg("is metadata file")
+				// Others
+			default:
 				entities = append(entities, entity)
 			}
+
 		}
 	}
 	if len(apps) == 0 {
-
 		log.Error().Msg("Error creating application, no application received")
 		return nil, nerrors.NewNotFoundError("error creating application, no application found")
 	}
@@ -166,25 +172,6 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 		objs:     objs,
 		entities: entities,
 	}, nil
-}
-
-// isApplication returns a boolean indicating if the entity received is an application
-// if it is, return it in an unstructured
-func isApplication(entity []byte) (*bool, *unstructured.Unstructured, error) {
-	isApp := false
-	// - Decode YAML manifest into unstructured.Unstructured
-	var decUnstructured = yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
-
-	unsObj := &unstructured.Unstructured{}
-	_, gvk, err := decUnstructured.Decode(entity, nil, unsObj)
-	if err != nil {
-		log.Warn().Err(err).Msg("error checking if the file contains an application, might not contain be an entity")
-		return &isApp, nil, nil
-	}
-
-	isApp = gvk.Group == applicationGVK.Group && gvk.Kind == applicationGVK.Kind && gvk.Version == applicationGVK.Version
-
-	return &isApp, unsObj, nil
 }
 
 // GetName returns the application name
@@ -214,15 +201,14 @@ func (a *Application) ApplyParameters(applicationName string, newName string, co
 }
 
 // ToYAML converts the application in YAML
-func (a *Application) ToYAML() ([]byte, error) {
+func (a *Application) ToYAML() ([][]byte, [][]byte, error) {
 
-	var yamlFile []byte
-	separator := ("\n---\n")
+	var appsFiles [][]byte
 	for _, app := range a.apps {
 		jsonStr, err := json.Marshal(app)
 		if err != nil {
 			log.Error().Err(err).Msg("error parsing to JSON")
-			return nil, nerrors.NewInternalError("error converting to JSON")
+			return nil, nil, nerrors.NewInternalError("error converting to JSON")
 		}
 
 		// Convert the JSON to an object.
@@ -230,23 +216,20 @@ func (a *Application) ToYAML() ([]byte, error) {
 		err = yamlv3.Unmarshal(jsonStr, &jsonObj)
 		if err != nil {
 			log.Error().Err(err).Msg("error in Unmarshal ")
-			return nil, nerrors.NewInternalError("error converting to YAML")
+			return nil, nil, nerrors.NewInternalError("error converting to YAML")
 		}
 
 		// Marshal this object into YAML.
 		returned, err := yamlv3.Marshal(jsonObj)
 		if err != nil {
 			log.Error().Err(err).Msg("error in Marshal ")
-			return nil, nerrors.NewInternalError("error converting to YAML")
+			return nil, nil, nerrors.NewInternalError("error converting to YAML")
 		}
 
-		yamlFile = append(yamlFile, returned...)
-		yamlFile = append(yamlFile, []byte(separator)...)
+		appsFiles = append(appsFiles, returned)
 
 	}
 
-	// TODO: add entities
-
-	return yamlFile, nil
+	return appsFiles, a.entities, nil
 
 }
