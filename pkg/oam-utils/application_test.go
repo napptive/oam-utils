@@ -133,7 +133,7 @@ const readme = `
 var _ = ginkgo.Describe("Handler test on log calls", func() {
 
 	ginkgo.It("Should be able to return the application name", func() {
-		files := []ApplicationFile{{FileName: "file1.yaml", Content: []byte(fileWithWorkflow)}}
+		files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(fileWithWorkflow)}}
 		app, err := NewApplication(files)
 		gomega.Expect(err).Should(gomega.Succeed())
 		gomega.Expect(app).ShouldNot(gomega.BeNil())
@@ -151,9 +151,9 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 
 	})
 	ginkgo.It("Should be able to return the application name of a full application", func() {
-		files := []ApplicationFile{{FileName: "file1.yaml", Content: []byte(readme)},
-			{FileName: "file2.yaml", Content: []byte(metadata)},
-			{FileName: "file3", Content: []byte(fileWithWorkflow)}}
+		files := []*ApplicationFile{{FileName: "file1.md", Content: []byte(readme)},
+			{FileName: "file2.txt", Content: []byte(metadata)},
+			{FileName: "file3.yaml", Content: []byte(fileWithWorkflow)}}
 
 		app, err := NewApplication(files)
 		gomega.Expect(err).Should(gomega.Succeed())
@@ -165,7 +165,7 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 	})
 
 	ginkgo.It("Should be able to return the application name when the file contains several applications", func() {
-		files := []ApplicationFile{{FileName: "file1.yaml", Content: []byte(ComposedFile)}}
+		files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(ComposedFile)}}
 		app, err := NewApplication(files)
 		gomega.Expect(err).Should(gomega.Succeed())
 		gomega.Expect(app).ShouldNot(gomega.BeNil())
@@ -176,7 +176,7 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 	})
 
 	ginkgo.It("Should be able to return the application name receiving two files", func() {
-		files := []ApplicationFile{
+		files := []*ApplicationFile{
 			{FileName: "file1.yaml", Content: []byte(filewithoutApplication)},
 			{FileName: "file2.yaml", Content: []byte(fileWithWorkflow)}}
 
@@ -190,7 +190,7 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 	})
 
 	ginkgo.It("Should be able to return the application name in a multiple YAML file", func() {
-		files := []ApplicationFile{{FileName: "file1.yaml", Content: []byte(applicationFile)}}
+		files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(applicationFile)}}
 		app, err := NewApplication(files)
 		gomega.Expect(err).Should(gomega.Succeed())
 		gomega.Expect(app).ShouldNot(gomega.BeNil())
@@ -208,8 +208,22 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 	})
 
 	ginkgo.It("should not be able to create an applicacion when it does not exist", func() {
-		files := []ApplicationFile{{FileName: "file1.yaml", Content: []byte(filewithoutApplication)}}
+		files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(filewithoutApplication)}}
 		_, err := NewApplication(files)
 		gomega.Expect(err).ShouldNot(gomega.Succeed())
+	})
+
+	ginkgo.It("Should be able to return the application name when a readme has yaml extension", func() {
+		files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(readme)},
+			{FileName: "file2.txt", Content: []byte(metadata)},
+			{FileName: "file3.yaml", Content: []byte(fileWithWorkflow)}}
+
+		app, err := NewApplication(files)
+		gomega.Expect(err).Should(gomega.Succeed())
+		gomega.Expect(app).ShouldNot(gomega.BeNil())
+
+		name := app.GetName()
+		gomega.Expect(name).Should(gomega.Equal(name))
+
 	})
 })

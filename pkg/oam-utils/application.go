@@ -69,7 +69,7 @@ type Application struct {
 }
 
 // NewApplication converts an oam application from an array of yaml files into an Application
-func NewApplication(files []ApplicationFile) (*Application, error) {
+func NewApplication(files []*ApplicationFile) (*Application, error) {
 	for _, file := range files {
 
 		// check if the file is a yaml File
