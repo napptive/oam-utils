@@ -19,12 +19,10 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"io"
 
 	"github.com/napptive/nerrors/pkg/nerrors"
 	"github.com/rs/zerolog/log"
-	yamlv3 "gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -194,6 +192,24 @@ func (a *Application) GetNames() map[string]string {
 	return names
 }
 
+// GetParameters returns the components spec of an aplication indexed by application name
+func (a *Application) GetParameters() (map[string]string, error) {
+
+	parameters := make(map[string]string, 0)
+
+	for appName, app := range a.apps {
+		// Marshal this object into YAML.
+		returned, err := convertToYAML(app.Spec)
+		if err != nil {
+			log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
+			return nil, nerrors.NewInternalError("error getting the parameters of %s application", appName)
+		}
+		parameters[appName] = string(returned)
+	}
+
+	return parameters, nil
+}
+
 // ApplyParameters overwrite the application name and the components spec in application named `applicationName`
 // TODO: implement ComponentSpec management
 func (a *Application) ApplyParameters(applicationName string, newName string, componentsSpec string) error {
@@ -218,31 +234,28 @@ func (a *Application) ToYAML() ([][]byte, [][]byte, error) {
 
 	var appsFiles [][]byte
 	for _, app := range a.apps {
-		jsonStr, err := json.Marshal(app)
-		if err != nil {
-			log.Error().Err(err).Msg("error parsing to JSON")
-			return nil, nil, nerrors.NewInternalError("error converting to JSON")
-		}
-
-		// Convert the JSON to an object.
-		var jsonObj interface{}
-		err = yamlv3.Unmarshal(jsonStr, &jsonObj)
-		if err != nil {
-			log.Error().Err(err).Msg("error in Unmarshal ")
-			return nil, nil, nerrors.NewInternalError("error converting to YAML")
-		}
-
 		// Marshal this object into YAML.
-		returned, err := yamlv3.Marshal(jsonObj)
+		returned, err := convertToYAML(app)
 		if err != nil {
 			log.Error().Err(err).Msg("error in Marshal ")
 			return nil, nil, nerrors.NewInternalError("error converting to YAML")
 		}
 
 		appsFiles = append(appsFiles, returned)
-
 	}
 
 	return appsFiles, a.entities, nil
+}
 
+func (a *Application) GetComponentSpec() ([]byte, error) {
+	for _, app := range a.apps {
+		// Marshal this object into YAML.
+		returned, err := convertToYAML(app.Spec)
+		if err != nil {
+			log.Error().Err(err).Msg("error in Marshal ")
+			return nil, nerrors.NewInternalError("error converting to YAML")
+		}
+		return returned, nil
+	}
+	return nil, nil
 }
