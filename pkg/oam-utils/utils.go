@@ -24,6 +24,7 @@ import (
 	"github.com/napptive/nerrors/pkg/nerrors"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
@@ -55,8 +56,8 @@ func splitYAMLFile(file []byte) ([][]byte, error) {
 
 }
 
-// convert converts an *unstructured.Unstructured into the struct received
-func convert(unsObj *unstructured.Unstructured, converted interface{}) error {
+// convertUnstructured converts an *unstructured.Unstructured into the struct received
+func convertFromUnstructured(unsObj *unstructured.Unstructured, converted interface{}) error {
 	to, err := unsObj.MarshalJSON()
 	if err != nil {
 		log.Error().Err(err).Msg("error marshalling struct")
@@ -132,4 +133,17 @@ func getGVKType(gvk *schema.GroupVersionKind) EntityType {
 		return EntityType_METADATA
 	}
 	return EntityType_UNKNOWN
+}
+
+// Receives a string and converts its content to a RawExtension
+func toRawExtension(spec string) (*runtime.RawExtension, error) {
+	reader := strings.NewReader(spec)
+	d := yaml.NewYAMLOrJSONDecoder(reader, 4096)
+
+	ext := runtime.RawExtension{}
+	if err := d.Decode(&ext); err != nil {
+		log.Error().Err(err).Str("spec", spec).Msg("error in toRawExtension")
+		return nil, nerrors.NewInternalError("Error processing %s", err.Error())
+	}
+	return &ext, nil
 }

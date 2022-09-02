@@ -73,6 +73,7 @@ type Application struct {
 	// App with a map of OAM applications indexed by application the name
 	apps map[string]*ApplicationDefinition
 	// obj with map of the OAM applications stored as unstructured indexed by the name
+	// this struct always have the intial values, it is no been updated when setting parameters
 	objs map[string]*unstructured.Unstructured
 	// entities with an array of other entities
 	entities [][]byte
@@ -151,7 +152,7 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 			// Application
 			case EntityType_APP:
 				var appDefinition ApplicationDefinition
-				if err := convert(app, &appDefinition); err != nil {
+				if err := convertFromUnstructured(app, &appDefinition); err != nil {
 					log.Error().Err(err).Str("File", file.FileName).Msg("error converting application")
 					return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
 				}
@@ -211,8 +212,8 @@ func (a *Application) GetParameters() (map[string]string, error) {
 }
 
 // ApplyParameters overwrite the application name and the components spec in application named `applicationName`
-// TODO: implement ComponentSpec management
-func (a *Application) ApplyParameters(applicationName string, newName string, componentsSpec string) error {
+func (a *Application) ApplyParameters(applicationName string, newName string, newComponentsSpec string) error {
+
 	if len(a.apps) == 0 {
 		return nerrors.NewNotFoundError("there is no applications to apply parameters")
 	}
@@ -224,6 +225,13 @@ func (a *Application) ApplyParameters(applicationName string, newName string, co
 	}
 	if newName != "" {
 		app.Metadata.Name = newName
+	}
+	if newComponentsSpec != "" {
+		spec, err := toRawExtension(newComponentsSpec)
+		if err != nil {
+			return nerrors.NewInternalError("Unable to aply parameters: %s", err.Error())
+		}
+		app.Spec.Components = spec
 	}
 
 	return nil

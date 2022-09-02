@@ -18,6 +18,7 @@ package oam_utils
 import (
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
+	"github.com/rs/zerolog/log"
 )
 
 const applicationFile = (`
@@ -149,6 +150,18 @@ spec:
 ---
 `
 
+const spec = `
+spec:
+  components:
+    - name: component1
+      type: webservice
+      properties:
+        image: nginx:1.20.0
+        ports:
+        - port: 82
+          expose: true
+`
+
 var _ = ginkgo.Describe("Handler test on log calls", func() {
 
 	ginkgo.Context("Creating application", func() {
@@ -205,40 +218,80 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 	})
 
 	ginkgo.Context("Applying parameters", func() {
-		ginkgo.It("Should be able to apply parameters", func() {
-			files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(fileWithWorkflow)}}
-			app, err := NewApplication(files)
-			gomega.Expect(err).Should(gomega.Succeed())
-			gomega.Expect(app).ShouldNot(gomega.BeNil())
+		ginkgo.Context("Setting new name", func() {
+			ginkgo.It("Should be able to apply parameters (name)", func() {
+				files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(fileWithWorkflow)}}
+				app, err := NewApplication(files)
+				gomega.Expect(err).Should(gomega.Succeed())
+				gomega.Expect(app).ShouldNot(gomega.BeNil())
 
-			newName := "changed"
-			err = app.ApplyParameters("appWithWorkflow", newName, "")
-			gomega.Expect(err).Should(gomega.Succeed())
+				newName := "changed"
+				err = app.ApplyParameters("appWithWorkflow", newName, "")
+				gomega.Expect(err).Should(gomega.Succeed())
 
-			names := app.GetNames()
-			gomega.Expect(names).ShouldNot(gomega.BeNil())
-			gomega.Expect(names["appWithWorkflow"]).Should(gomega.Equal(newName))
+				names := app.GetNames()
+				gomega.Expect(names).ShouldNot(gomega.BeNil())
+				gomega.Expect(names["appWithWorkflow"]).Should(gomega.Equal(newName))
 
+			})
+			ginkgo.It("Should not be able to apply parameters (name) in a non existing application", func() {
+				files := []*ApplicationFile{{FileName: "metadata.yaml", Content: []byte(metadata)}}
+				app, err := NewApplication(files)
+				gomega.Expect(err).Should(gomega.Succeed())
+				gomega.Expect(app).ShouldNot(gomega.BeNil())
+
+				newName := "changed"
+				err = app.ApplyParameters("appWithWorkflow", newName, "")
+				gomega.Expect(err).ShouldNot(gomega.Succeed())
+			})
+			ginkgo.It("Should not be able to apply parameters (name) in a wrong existing application", func() {
+				files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(fileWithWorkflow)}}
+				app, err := NewApplication(files)
+				gomega.Expect(err).Should(gomega.Succeed())
+				gomega.Expect(app).ShouldNot(gomega.BeNil())
+
+				newName := "changed"
+				err = app.ApplyParameters("error", newName, "")
+				gomega.Expect(err).ShouldNot(gomega.Succeed())
+			})
 		})
-		ginkgo.It("Should not be able to apply parameters in a non existing application", func() {
-			files := []*ApplicationFile{{FileName: "metadata.yaml", Content: []byte(metadata)}}
-			app, err := NewApplication(files)
-			gomega.Expect(err).Should(gomega.Succeed())
-			gomega.Expect(app).ShouldNot(gomega.BeNil())
+		ginkgo.Context("Setting component spec", func() {
+			ginkgo.It("Show be able to apply parameters (Components spec)", func() {
+				files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(applicationFile)}}
+				app, err := NewApplication(files)
+				gomega.Expect(err).Should(gomega.Succeed())
+				gomega.Expect(app).ShouldNot(gomega.BeNil())
 
-			newName := "changed"
-			err = app.ApplyParameters("appWithWorkflow", newName, "")
-			gomega.Expect(err).ShouldNot(gomega.Succeed())
-		})
-		ginkgo.It("Should not be able to apply components in a wrong existing application", func() {
-			files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(fileWithWorkflow)}}
-			app, err := NewApplication(files)
-			gomega.Expect(err).Should(gomega.Succeed())
-			gomega.Expect(app).ShouldNot(gomega.BeNil())
+				err = app.ApplyParameters("appapplication", "", spec)
+				gomega.Expect(err).Should(gomega.Succeed())
 
-			newName := "changed"
-			err = app.ApplyParameters("error", newName, "")
-			gomega.Expect(err).ShouldNot(gomega.Succeed())
+			})
+			ginkgo.It("Show be able to apply parameters (Components spec) in an application with workload specs", func() {
+				files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(fileWithWorkflow)}}
+				app, err := NewApplication(files)
+				gomega.Expect(err).Should(gomega.Succeed())
+				gomega.Expect(app).ShouldNot(gomega.BeNil())
+
+				err = app.ApplyParameters("appWithWorkflow", "", spec)
+				gomega.Expect(err).Should(gomega.Succeed())
+
+				apps, _, err := app.ToYAML()
+				gomega.Expect(err).Should(gomega.Succeed())
+				gomega.Expect(apps).ShouldNot(gomega.BeNil())
+
+				log.Info().Str("application", string(apps[0])).Msg("application YAML")
+
+			})
+			ginkgo.It("Show not be able to apply parameters if the application does not exists", func() {
+				files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(applicationFile)}}
+				app, err := NewApplication(files)
+				gomega.Expect(err).Should(gomega.Succeed())
+				gomega.Expect(app).ShouldNot(gomega.BeNil())
+
+				err = app.ApplyParameters("error", "", spec)
+				gomega.Expect(err).ShouldNot(gomega.Succeed())
+
+			})
 		})
 	})
 
