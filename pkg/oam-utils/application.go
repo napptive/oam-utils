@@ -79,6 +79,13 @@ type Application struct {
 	entities [][]byte
 }
 
+type InstanceConf struct {
+	// Name with the application name
+	Name string
+	// ComponentSpec with the component specification
+	ComponentSpec string
+}
+
 // NewApplicationFromTGZ receives a tgz file and returns convert the content into an application
 func NewApplicationFromTGZ(rawApplication []byte) (*Application, error) {
 	files := make([]*ApplicationFile, 0)
@@ -209,6 +216,24 @@ func (a *Application) GetParameters() (map[string]string, error) {
 	}
 
 	return parameters, nil
+}
+
+// GetConfigurations return the name and the componentSpec by application
+func (a *Application) GetConfigurations() (map[string]*InstanceConf, error) {
+	confs := make(map[string]*InstanceConf, 0)
+	for appName, app := range a.apps {
+		// Marshal this object into YAML.
+		returned, err := convertToYAML(app.Spec)
+		if err != nil {
+			log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
+			return nil, nerrors.NewInternalError("error getting the configuration of %s application", appName)
+		}
+		confs[appName] = &InstanceConf{
+			Name:          appName,
+			ComponentSpec: string(returned),
+		}
+	}
+	return confs, nil
 }
 
 // ApplyParameters overwrite the application name and the components spec in application named `applicationName`
