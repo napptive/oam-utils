@@ -46,41 +46,6 @@ spec:
         - port: 80
           expose: true
 `)
-const twoApplicationFile = (`
-apiVersion: core.oam.dev/v1beta1
-kind: Application
-metadata:
-  name: app1
-  annotations:
-    version: v1.0.0
-    description: "Customized version of nginx"
-spec:
-  components:
-    - name: nginx1
-      type: webservice
-      properties:
-        image: nginx:1.20.0
-        ports:
-        - port: 80
-          expose: true
----
-apiVersion: core.oam.dev/v1beta1
-kind: Application
-metadata:
-  name: app2
-  annotations:
-    version: v1.0.0
-    description: "Customized version of nginx"
-spec:
-  components:
-    - name: nginx2
-      type: webservice
-      properties:
-        image: nginx:1.20.0
-        ports:
-        - port: 80
-          expose: true
-`)
 const cm = `
 apiVersion: v1
 kind: ConfigMap
