@@ -19,15 +19,39 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+type EntityType uint
+
+const (
+	EntityType_UNKNOWN EntityType = iota
+	EntityType_APP
+	EntityType_METADATA
+)
+
 // applicationGVK with application GVK
-var applicationGVK = schema.GroupVersionKind{
+var applicationGVK = []schema.GroupVersionKind{{
+	Group:   "core.oam.dev",
+	Version: "v1alpha2",
+	Kind:    "ApplicationConfiguration",
+}, {
 	Group:   "core.oam.dev",
 	Version: "v1beta1",
 	Kind:    "Application",
-}
+}}
+
+// metadataTypes with entities that contain information about the application itself.
+var metadataGKV = []schema.GroupVersionKind{
+	{
+		Group:   "core.napptive.com",
+		Version: "v1alpha1",
+		Kind:    "ApplicationMetadata",
+	}, {
+		Group:   "core.oam.dev",
+		Version: "v1alpha1",
+		Kind:    "ApplicationMetadata",
+	}}
 
 // ApplicationFile with a struct that relates the name of a file to its content
 type ApplicationFile struct {
 	FileName string
-	Content []byte
+	Content  []byte
 }

@@ -24,7 +24,10 @@ import (
 	"github.com/napptive/nerrors/pkg/nerrors"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
+
+	k8syaml "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 )
 
 // splitYAMLFile returns a list o YAMLs from a multi resource YAML file
@@ -67,4 +70,39 @@ func convert(unsObj *unstructured.Unstructured, converted interface{}) error {
 
 func isYAMLFile(fileName string) bool {
 	return strings.HasSuffix(fileName, ".yaml") || strings.HasSuffix(fileName, ".yml")
+}
+
+// validateType returns true if the file has the same GroupVersionKind as one received
+func validateType(inputType *schema.GroupVersionKind, types []schema.GroupVersionKind) bool {
+	// - Decode YAML manifest into unstructured.Unstructured
+
+	for _, appType := range types {
+		if appType.Kind == inputType.Kind && appType.Version == inputType.Version && appType.Group == inputType.Group {
+			return true
+		}
+	}
+	return false
+}
+
+func getGVK(entity []byte) (*schema.GroupVersionKind, *unstructured.Unstructured, error) {
+	// - Decode YAML manifest into unstructured.Unstructured
+	var decUnstructured = k8syaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
+
+	unsObj := &unstructured.Unstructured{}
+	_, gvk, err := decUnstructured.Decode(entity, nil, unsObj)
+	if err != nil {
+		log.Error().Err(err).Msg("error getting GVK from an entity")
+		return nil, nil, nerrors.NewInternalError("error getting GVK from an entity")
+	}
+	return gvk, unsObj, nil
+}
+
+func getGVKType(gvk *schema.GroupVersionKind) EntityType {
+	if validateType(gvk, applicationGVK) {
+		return EntityType_APP
+	}
+	if validateType(gvk, metadataGKV) {
+		return EntityType_METADATA
+	}
+	return EntityType_UNKNOWN
 }
