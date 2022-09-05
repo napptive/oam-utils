@@ -348,17 +348,17 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 			gomega.Expect(parameters).Should(gomega.BeEmpty())
 		})
 
-		ginkgo.It("FULL Test", func() {
+		ginkgo.FIt("FULL Test", func() {
 			files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(fileWithWorkflow)}}
 			app, err := NewApplication(files)
 			gomega.Expect(err).Should(gomega.Succeed())
 			gomega.Expect(app).ShouldNot(gomega.BeNil())
 
-			params, err := app.GetParameters()
+			params, err := app.GetConfigurations()
 			gomega.Expect(err).Should(gomega.Succeed())
 			gomega.Expect(params).ShouldNot(gomega.BeNil())
 
-			err = app.ApplyParameters("appWithWorkflow", "", params["appWithWorkflow"])
+			err = app.ApplyParameters("appWithWorkflow", "", params["appWithWorkflow"].ComponentSpec)
 			gomega.Expect(err).Should(gomega.Succeed())
 
 			yaml, _, err := app.ToYAML()

@@ -232,7 +232,7 @@ func (a *Application) GetConfigurations() (map[string]*InstanceConf, error) {
 	confs := make(map[string]*InstanceConf, 0)
 	for appName, app := range a.apps {
 		// Marshal this object into YAML.
-		returned, err := convertToYAML(app.Spec)
+		returned, err := convertToYAML(app.Spec.copyComponents())
 		if err != nil {
 			log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
 			return nil, nerrors.NewInternalError("error getting the configuration of %s application", appName)
