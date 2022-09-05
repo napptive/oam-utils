@@ -231,7 +231,7 @@ func (a *Application) GetParameters() (map[string]string, error) {
 func (a *Application) GetConfigurations() (map[string]*InstanceConf, error) {
 	confs := make(map[string]*InstanceConf, 0)
 	for appName, app := range a.apps {
-		// Marshal this object into YAML.
+		// Marshal this object into YAML (only components)
 		returned, err := convertToYAML(app.Spec.copyComponents())
 		if err != nil {
 			log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")

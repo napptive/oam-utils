@@ -133,16 +133,3 @@ func getGVKType(gvk *schema.GroupVersionKind) EntityType {
 	}
 	return EntityType_UNKNOWN
 }
-
-// Receives a string and converts its content to a RawExtension
-/* func toRawExtension(spec string) (*runtime.RawExtension, error) {
-	reader := strings.NewReader(spec)
-	d := yaml.NewYAMLOrJSONDecoder(reader, 4096)
-
-	ext := runtime.RawExtension{}
-	if err := d.Decode(&ext); err != nil {
-		log.Error().Err(err).Str("spec", spec).Msg("error in toRawExtension")
-		return nil, nerrors.NewInternalError("Error processing %s", err.Error())
-	}
-	return &ext, nil
-} */
