@@ -207,7 +207,7 @@ func (a *Application) GetParameters() (map[string]string, error) {
 
 	for appName, app := range a.apps {
 		// Marshal this object into YAML.
-		returned, err := convertToYAML(app.Spec)
+		returned, err := convertToYAML(app.Spec.Components)
 		if err != nil {
 			log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
 			return nil, nerrors.NewInternalError("error getting the parameters of %s application", appName)
