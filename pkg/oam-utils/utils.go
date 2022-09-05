@@ -24,7 +24,6 @@ import (
 	"github.com/napptive/nerrors/pkg/nerrors"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
@@ -136,7 +135,7 @@ func getGVKType(gvk *schema.GroupVersionKind) EntityType {
 }
 
 // Receives a string and converts its content to a RawExtension
-func toRawExtension(spec string) (*runtime.RawExtension, error) {
+/* func toRawExtension(spec string) (*runtime.RawExtension, error) {
 	reader := strings.NewReader(spec)
 	d := yaml.NewYAMLOrJSONDecoder(reader, 4096)
 
@@ -146,4 +145,4 @@ func toRawExtension(spec string) (*runtime.RawExtension, error) {
 		return nil, nerrors.NewInternalError("Error processing %s", err.Error())
 	}
 	return &ext, nil
-}
+} */

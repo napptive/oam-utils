@@ -20,11 +20,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
+	"strings"
 
 	"github.com/napptive/nerrors/pkg/nerrors"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 type Metadata struct {
@@ -207,7 +209,7 @@ func (a *Application) GetParameters() (map[string]string, error) {
 
 	for appName, app := range a.apps {
 		// Marshal this object into YAML.
-		returned, err := convertToYAML(app.Spec.Components)
+		returned, err := convertToYAML(app.Spec)
 		if err != nil {
 			log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
 			return nil, nerrors.NewInternalError("error getting the parameters of %s application", appName)
@@ -237,7 +239,7 @@ func (a *Application) GetConfigurations() (map[string]*InstanceConf, error) {
 }
 
 // ApplyParameters overwrite the application name and the components spec in application named `applicationName`
-func (a *Application) ApplyParameters(applicationName string, newName string, newComponentsSpec string) error {
+func (a *Application) ApplyParameters(applicationName string, newName string, newAppSpec string) error {
 
 	if len(a.apps) == 0 {
 		return nerrors.NewNotFoundError("there is no applications to apply parameters")
@@ -251,12 +253,12 @@ func (a *Application) ApplyParameters(applicationName string, newName string, ne
 	if newName != "" {
 		app.Metadata.Name = newName
 	}
-	if newComponentsSpec != "" {
-		spec, err := toRawExtension(newComponentsSpec)
+	if newAppSpec != "" {
+		spec, err := a.toApplicationSpec(newAppSpec)
 		if err != nil {
 			return nerrors.NewInternalError("Unable to aply parameters: %s", err.Error())
 		}
-		app.Spec.Components = spec
+		app.Spec = *spec
 	}
 
 	return nil
@@ -291,4 +293,17 @@ func (a *Application) GetComponentSpec() ([]byte, error) {
 		return returned, nil
 	}
 	return nil, nil
+}
+
+func (a *Application) toApplicationSpec(spec string) (*ApplicationSpec, error) {
+
+	reader := strings.NewReader(spec)
+	d := yaml.NewYAMLOrJSONDecoder(reader, 4096)
+
+	ext := ApplicationDefinition{}
+	if err := d.Decode(&ext); err != nil {
+		log.Error().Err(err).Str("spec", spec).Msg("error in toRawExtension")
+		return nil, nerrors.NewInternalError("Error processing %s", err.Error())
+	}
+	return &ext.Spec, nil
 }
