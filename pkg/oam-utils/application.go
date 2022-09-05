@@ -70,6 +70,15 @@ type ApplicationDefinition struct {
 	Spec ApplicationSpec `json:"spec"`
 }
 
+// copyComponents returns an ApplicationSpect without any field except Components
+func (as *ApplicationSpec) copyComponents() *ApplicationSpec {
+	return &ApplicationSpec{
+		Components: as.Components,
+		Policies:   []AppPolicy{},
+		Workflow:   &runtime.RawExtension{},
+	}
+}
+
 // Application with an catalog application
 type Application struct {
 	// App with a map of OAM applications indexed by application the name
@@ -209,7 +218,7 @@ func (a *Application) GetParameters() (map[string]string, error) {
 
 	for appName, app := range a.apps {
 		// Marshal this object into YAML.
-		returned, err := convertToYAML(app.Spec)
+		returned, err := convertToYAML(app.Spec.copyComponents())
 		if err != nil {
 			log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
 			return nil, nerrors.NewInternalError("error getting the parameters of %s application", appName)
@@ -258,7 +267,7 @@ func (a *Application) ApplyParameters(applicationName string, newName string, ne
 		if err != nil {
 			return nerrors.NewInternalError("Unable to aply parameters: %s", err.Error())
 		}
-		app.Spec = *spec
+		app.Spec.Components = spec.Components
 	}
 
 	return nil

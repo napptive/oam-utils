@@ -56,8 +56,7 @@ data:
   cpu: "0.50"
   memory: "250Mi"
 `
-const fileWithWorkflow = `
-apiVersion: core.oam.dev/v1beta1
+const fileWithWorkflow = `apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
   name: appWithWorkflow
@@ -347,6 +346,27 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 			parameters, err := app.GetParameters()
 			gomega.Expect(err).Should(gomega.Succeed())
 			gomega.Expect(parameters).Should(gomega.BeEmpty())
+		})
+
+		ginkgo.It("FULL Test", func() {
+			files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(fileWithWorkflow)}}
+			app, err := NewApplication(files)
+			gomega.Expect(err).Should(gomega.Succeed())
+			gomega.Expect(app).ShouldNot(gomega.BeNil())
+
+			params, err := app.GetParameters()
+			gomega.Expect(err).Should(gomega.Succeed())
+			gomega.Expect(params).ShouldNot(gomega.BeNil())
+
+			err = app.ApplyParameters("appWithWorkflow", "", params["appWithWorkflow"])
+			gomega.Expect(err).Should(gomega.Succeed())
+
+			yaml, _, err := app.ToYAML()
+			gomega.Expect(err).Should(gomega.Succeed())
+			gomega.Expect(yaml).ShouldNot(gomega.BeNil())
+
+			log.Info().Str("application", string(yaml[0])).Msg("application YAML")
+
 		})
 	})
 
