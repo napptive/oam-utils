@@ -74,8 +74,6 @@ type ApplicationDefinition struct {
 func (as *ApplicationSpec) copyComponents() *ApplicationSpec {
 	return &ApplicationSpec{
 		Components: as.Components,
-		Policies:   []AppPolicy{},
-		Workflow:   &runtime.RawExtension{},
 	}
 }
 
