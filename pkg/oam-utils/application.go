@@ -300,10 +300,10 @@ func (a *Application) toApplicationSpec(spec string) (*ApplicationSpec, error) {
 	reader := strings.NewReader(spec)
 	d := yaml.NewYAMLOrJSONDecoder(reader, 4096)
 
-	ext := ApplicationDefinition{}
+	ext := ApplicationSpec{}
 	if err := d.Decode(&ext); err != nil {
 		log.Error().Err(err).Str("spec", spec).Msg("error in toRawExtension")
 		return nil, nerrors.NewInternalError("Error processing %s", err.Error())
 	}
-	return &ext.Spec, nil
+	return &ext, nil
 }

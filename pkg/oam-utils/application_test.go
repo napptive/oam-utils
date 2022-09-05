@@ -151,13 +151,12 @@ spec:
 `
 
 const spec = `
-spec:
-  components:
-    - name: component1
-      type: webservice
-      properties:
-        image: nginx:1.20.0
-        ports:
+components:
+  - name: component1
+    type: webservice
+    properties:
+      image: 'nginx:1.20.0'
+      ports:
         - port: 82
           expose: true
 `
