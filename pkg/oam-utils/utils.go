@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
+	yamlv3 "gopkg.in/yaml.v3"
 	k8syaml "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 )
 
@@ -54,8 +55,8 @@ func splitYAMLFile(file []byte) ([][]byte, error) {
 
 }
 
-// convert converts an *unstructured.Unstructured into the struct received
-func convert(unsObj *unstructured.Unstructured, converted interface{}) error {
+// convertUnstructured converts an *unstructured.Unstructured into the struct received
+func convertFromUnstructured(unsObj *unstructured.Unstructured, converted interface{}) error {
 	to, err := unsObj.MarshalJSON()
 	if err != nil {
 		log.Error().Err(err).Msg("error marshalling struct")
@@ -70,6 +71,32 @@ func convert(unsObj *unstructured.Unstructured, converted interface{}) error {
 
 func isYAMLFile(fileName string) bool {
 	return strings.HasSuffix(fileName, ".yaml") || strings.HasSuffix(fileName, ".yml")
+}
+
+// convertToYAML receives an interface (entity) and return its yaml representation
+func convertToYAML(entry interface{}) ([]byte, error) {
+	jsonStr, err := json.Marshal(entry)
+	if err != nil {
+		log.Error().Err(err).Msg("error parsing to JSON")
+		return nil, nerrors.NewInternalError("error converting to JSON")
+	}
+
+	// Convert the JSON to an object.
+	var jsonObj interface{}
+	err = yamlv3.Unmarshal(jsonStr, &jsonObj)
+	if err != nil {
+		log.Error().Err(err).Msg("error in Unmarshal ")
+		return nil, nerrors.NewInternalError("error converting to YAML")
+	}
+
+	// Marshal this object into YAML.
+	returned, err := yamlv3.Marshal(jsonObj)
+	if err != nil {
+		log.Error().Err(err).Msg("error in Marshal ")
+		return nil, nerrors.NewInternalError("error converting to YAML")
+	}
+
+	return returned, nil
 }
 
 // validateType returns true if the file has the same GroupVersionKind as one received

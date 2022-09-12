@@ -19,14 +19,14 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"io"
+	"strings"
 
 	"github.com/napptive/nerrors/pkg/nerrors"
 	"github.com/rs/zerolog/log"
-	yamlv3 "gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 type Metadata struct {
@@ -70,14 +70,29 @@ type ApplicationDefinition struct {
 	Spec ApplicationSpec `json:"spec"`
 }
 
+// copyComponents returns an ApplicationSpect without any field except Components
+func (as *ApplicationSpec) copyComponents() *ApplicationSpec {
+	return &ApplicationSpec{
+		Components: as.Components,
+	}
+}
+
 // Application with an catalog application
 type Application struct {
 	// App with a map of OAM applications indexed by application the name
 	apps map[string]*ApplicationDefinition
 	// obj with map of the OAM applications stored as unstructured indexed by the name
+	// this struct always have the intial values, it is no been updated when setting parameters
 	objs map[string]*unstructured.Unstructured
 	// entities with an array of other entities
 	entities [][]byte
+}
+
+type InstanceConf struct {
+	// Name with the application name
+	Name string
+	// ComponentSpec with the component specification
+	ComponentSpec string
 }
 
 // NewApplicationFromTGZ receives a tgz file and returns convert the content into an application
@@ -153,7 +168,7 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 			// Application
 			case EntityType_APP:
 				var appDefinition ApplicationDefinition
-				if err := convert(app, &appDefinition); err != nil {
+				if err := convertFromUnstructured(app, &appDefinition); err != nil {
 					log.Error().Err(err).Str("File", file.FileName).Msg("error converting application")
 					return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
 				}
@@ -194,9 +209,45 @@ func (a *Application) GetNames() map[string]string {
 	return names
 }
 
+// GetParameters returns the components spec of an aplication indexed by application name
+func (a *Application) GetParameters() (map[string]string, error) {
+
+	parameters := make(map[string]string, 0)
+
+	for appName, app := range a.apps {
+		// Marshal this object into YAML.
+		returned, err := convertToYAML(app.Spec.copyComponents())
+		if err != nil {
+			log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
+			return nil, nerrors.NewInternalError("error getting the parameters of %s application", appName)
+		}
+		parameters[appName] = string(returned)
+	}
+
+	return parameters, nil
+}
+
+// GetConfigurations return the name and the componentSpec by application
+func (a *Application) GetConfigurations() (map[string]*InstanceConf, error) {
+	confs := make(map[string]*InstanceConf, 0)
+	for appName, app := range a.apps {
+		// Marshal this object into YAML (only components)
+		returned, err := convertToYAML(app.Spec.copyComponents())
+		if err != nil {
+			log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
+			return nil, nerrors.NewInternalError("error getting the configuration of %s application", appName)
+		}
+		confs[appName] = &InstanceConf{
+			Name:          appName,
+			ComponentSpec: string(returned),
+		}
+	}
+	return confs, nil
+}
+
 // ApplyParameters overwrite the application name and the components spec in application named `applicationName`
-// TODO: implement ComponentSpec management
-func (a *Application) ApplyParameters(applicationName string, newName string, componentsSpec string) error {
+func (a *Application) ApplyParameters(applicationName string, newName string, newAppSpec string) error {
+
 	if len(a.apps) == 0 {
 		return nerrors.NewNotFoundError("there is no applications to apply parameters")
 	}
@@ -209,6 +260,13 @@ func (a *Application) ApplyParameters(applicationName string, newName string, co
 	if newName != "" {
 		app.Metadata.Name = newName
 	}
+	if newAppSpec != "" {
+		spec, err := a.toApplicationSpec(newAppSpec)
+		if err != nil {
+			return nerrors.NewInternalError("Unable to aply parameters: %s", err.Error())
+		}
+		app.Spec.Components = spec.Components
+	}
 
 	return nil
 }
@@ -218,31 +276,41 @@ func (a *Application) ToYAML() ([][]byte, [][]byte, error) {
 
 	var appsFiles [][]byte
 	for _, app := range a.apps {
-		jsonStr, err := json.Marshal(app)
-		if err != nil {
-			log.Error().Err(err).Msg("error parsing to JSON")
-			return nil, nil, nerrors.NewInternalError("error converting to JSON")
-		}
-
-		// Convert the JSON to an object.
-		var jsonObj interface{}
-		err = yamlv3.Unmarshal(jsonStr, &jsonObj)
-		if err != nil {
-			log.Error().Err(err).Msg("error in Unmarshal ")
-			return nil, nil, nerrors.NewInternalError("error converting to YAML")
-		}
-
 		// Marshal this object into YAML.
-		returned, err := yamlv3.Marshal(jsonObj)
+		returned, err := convertToYAML(app)
 		if err != nil {
 			log.Error().Err(err).Msg("error in Marshal ")
 			return nil, nil, nerrors.NewInternalError("error converting to YAML")
 		}
 
 		appsFiles = append(appsFiles, returned)
-
 	}
 
 	return appsFiles, a.entities, nil
+}
 
+func (a *Application) GetComponentSpec() ([]byte, error) {
+	for _, app := range a.apps {
+		// Marshal this object into YAML.
+		returned, err := convertToYAML(app.Spec)
+		if err != nil {
+			log.Error().Err(err).Msg("error in Marshal ")
+			return nil, nerrors.NewInternalError("error converting to YAML")
+		}
+		return returned, nil
+	}
+	return nil, nil
+}
+
+func (a *Application) toApplicationSpec(spec string) (*ApplicationSpec, error) {
+
+	reader := strings.NewReader(spec)
+	d := yaml.NewYAMLOrJSONDecoder(reader, 4096)
+
+	ext := ApplicationSpec{}
+	if err := d.Decode(&ext); err != nil {
+		log.Error().Err(err).Str("spec", spec).Msg("error in toRawExtension")
+		return nil, nerrors.NewInternalError("Error processing %s", err.Error())
+	}
+	return &ext, nil
 }
