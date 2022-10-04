@@ -199,20 +199,33 @@ func (a *Application) GetParameters() (map[string]string, error) {
 
 // GetConfigurations return the name and the componentSpec by application
 func (a *Application) GetConfigurations() (map[string]*InstanceConf, error) {
-	confs := make(map[string]*InstanceConf, 0)
-	for appName, app := range a.apps {
-		// Marshal this object into YAML (only components)
-		returned, err := convertToYAML(app.Spec.copyComponents())
-		if err != nil {
-			log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
-			return nil, nerrors.NewInternalError("error getting the configuration of %s application", appName)
+	configurations := make(map[string]*InstanceConf, 0)
+	/*
+		for appName, app := range a.apps {
+			// Marshal this object into YAML (only components)
+			returned, err := convertToYAML(app.Spec.copyComponents())
+			if err != nil {
+				log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
+				return nil, nerrors.NewInternalError("error getting the configuration of %s application", appName)
+			}
+			configurations[appName] = &InstanceConf{
+				Name:          appName,
+				ComponentSpec: string(returned),
+			}
 		}
-		confs[appName] = &InstanceConf{
+	*/
+	for appName, components := range a.componentsYAML {
+		appParameters, err := components.toYAML()
+		if err != nil {
+			log.Error().Err(err).Str("appName", appName).Msg("error converting to YAML")
+			return nil, nerrors.NewInternalError("error getting the parameters of %s application", appName)
+		}
+		configurations[appName] = &InstanceConf{
 			Name:          appName,
-			ComponentSpec: string(returned),
+			ComponentSpec: appParameters,
 		}
 	}
-	return confs, nil
+	return configurations, nil
 }
 
 // ApplyParameters overwrite the application name and the components spec in application named `applicationName`
