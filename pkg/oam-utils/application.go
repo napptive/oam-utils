@@ -1,18 +1,16 @@
 /*
-Copyright 2022 Napptive
+ * Copyright 2022 Napptive
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	https://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package oam_utils
 
 import (
@@ -24,68 +22,20 @@ import (
 
 	"github.com/napptive/nerrors/pkg/nerrors"
 	"github.com/rs/zerolog/log"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-type Metadata struct {
-	// Name of the resource
-	Name string `json:"name"`
-	// Annotations of the resource.
-	Annotations map[string]string `json:"annotations,omitempty"`
-	// Labels related to the resource.
-	Labels map[string]string `json:"labels,omitempty"`
-}
-
-// AppPolicy with the application policy
-type AppPolicy struct {
-	// Name of the policy
-	Name string `json:"name"`
-	// Type of the policy
-	Type string `json:"type"`
-	// Properties of the policy
-	Properties *runtime.RawExtension `json:"properties,omitempty"`
-}
-
-// ApplicationSpec with the application specification
-type ApplicationSpec struct {
-	// Components of the applcication
-	Components *runtime.RawExtension `json:"components"`
-	// Policies of the application
-	Policies []AppPolicy `json:"policies,omitempty"`
-	// Workflow with the workflowsteps of the application
-	Workflow *runtime.RawExtension `json:"workflow,omitempty"`
-}
-
-// ApplicationDefinnition with the definition of an OAM application
-type ApplicationDefinition struct {
-	// ApiVersion
-	ApiVersion string `json:"apiVersion"`
-	// Kind
-	Kind string `json:"kind"`
-	// Metadata
-	Metadata Metadata `json:"metadata"`
-	// Spec
-	Spec ApplicationSpec `json:"spec"`
-}
-
-// copyComponents returns an ApplicationSpect without any field except Components
-func (as *ApplicationSpec) copyComponents() *ApplicationSpec {
-	return &ApplicationSpec{
-		Components: as.Components,
-	}
-}
-
-// Application with an catalog application
+// Application with a catalog application
 type Application struct {
 	// App with a map of OAM applications indexed by application the name
 	apps map[string]*ApplicationDefinition
 	// obj with map of the OAM applications stored as unstructured indexed by the name
-	// this struct always have the intial values, it is no been updated when setting parameters
-	objs map[string]*unstructured.Unstructured
+	// this struct always have the initial values, it is no been updated when setting parameters
+	// objs map[string]*unstructured.Unstructured
 	// entities with an array of other entities
 	entities [][]byte
+	// componentsYAML with the components YAML spec (with comments) indexed by applicationName
+	componentsYAML map[string]*ComponentsNode
 }
 
 type InstanceConf struct {
@@ -102,7 +52,7 @@ func NewApplicationFromTGZ(rawApplication []byte) (*Application, error) {
 	br := bytes.NewReader(rawApplication)
 	uncompressedStream, err := gzip.NewReader(br)
 	if err != nil {
-		log.Error().Err(err).Msg("error creating applciation from tgz")
+		log.Error().Err(err).Msg("error creating application from tgz")
 		return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
 	}
 	tarReader := tar.NewReader(uncompressedStream)
@@ -112,7 +62,7 @@ func NewApplicationFromTGZ(rawApplication []byte) (*Application, error) {
 			break
 		}
 		if err != nil {
-			log.Error().Err(err).Msg("error creating applciation from tgz")
+			log.Error().Err(err).Msg("error creating application from tgz")
 			return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
 		}
 
@@ -139,8 +89,9 @@ func NewApplicationFromTGZ(rawApplication []byte) (*Application, error) {
 func NewApplication(files []*ApplicationFile) (*Application, error) {
 
 	apps := make(map[string]*ApplicationDefinition, 0)
-	objs := make(map[string]*unstructured.Unstructured, 0)
-	entities := [][]byte{}
+	//objs := make(map[string]*unstructured.Unstructured, 0)
+	nodes := make(map[string]*ComponentsNode, 0)
+	var entities [][]byte
 
 	for _, file := range files {
 
@@ -173,7 +124,15 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 					return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
 				}
 				apps[appDefinition.Metadata.Name] = &appDefinition
-				objs[appDefinition.Metadata.Name] = app
+				//objs[appDefinition.Metadata.Name] = app
+
+				node, err := getComponentsNode(entity)
+				if err != nil {
+					log.Error().Err(err).Str("File", file.FileName).Msg("error creating application")
+					return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
+				}
+				nodes[appDefinition.Metadata.Name] = node
+
 				// Metadata
 			case EntityType_METADATA:
 				log.Debug().Str("file", file.FileName).Msg("is metadata file")
@@ -193,13 +152,14 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 	log.Debug().Int("apps", len(apps)).Int("entities", len(entities)).Msg("Apps configuration")
 
 	return &Application{
-		apps:     apps,
-		objs:     objs,
-		entities: entities,
+		apps: apps,
+		//objs:           objs,
+		entities:       entities,
+		componentsYAML: nodes,
 	}, nil
 }
 
-// GetName returns the application name
+// GetNames returns the application name
 func (a *Application) GetNames() map[string]string {
 
 	names := make(map[string]string, 0)
@@ -209,19 +169,29 @@ func (a *Application) GetNames() map[string]string {
 	return names
 }
 
-// GetParameters returns the components spec of an aplication indexed by application name
+// GetParameters returns the components spec of an application indexed by application name
 func (a *Application) GetParameters() (map[string]string, error) {
 
 	parameters := make(map[string]string, 0)
 
-	for appName, app := range a.apps {
-		// Marshal this object into YAML.
-		returned, err := convertToYAML(app.Spec.copyComponents())
+	/*
+		for appName, app := range a.apps {
+			// Marshal this object into YAML.
+			returned, err := convertToYAML(app.Spec.copyComponents())
+			if err != nil {
+				log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
+				return nil, nerrors.NewInternalError("error getting the parameters of %s application", appName)
+			}
+			parameters[appName] = string(returned)
+		}
+	*/
+	for appName, components := range a.componentsYAML {
+		appParameters, err := components.toYAML()
 		if err != nil {
-			log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
+			log.Error().Err(err).Str("appName", appName).Msg("error converting to YAML")
 			return nil, nerrors.NewInternalError("error getting the parameters of %s application", appName)
 		}
-		parameters[appName] = string(returned)
+		parameters[appName] = appParameters
 	}
 
 	return parameters, nil
@@ -252,7 +222,7 @@ func (a *Application) ApplyParameters(applicationName string, newName string, ne
 		return nerrors.NewNotFoundError("there is no applications to apply parameters")
 	}
 
-	// check if the applicacion exists
+	// check if the application exists
 	app, exists := a.apps[applicationName]
 	if !exists {
 		return nerrors.NewNotFoundError("application %s not found", applicationName)
@@ -263,9 +233,18 @@ func (a *Application) ApplyParameters(applicationName string, newName string, ne
 	if newAppSpec != "" {
 		spec, err := a.toApplicationSpec(newAppSpec)
 		if err != nil {
-			return nerrors.NewInternalError("Unable to aply parameters: %s", err.Error())
+			return nerrors.NewInternalError("Unable to apply parameters: %s", err.Error())
 		}
 		app.Spec.Components = spec.Components
+	}
+
+	// update nodes
+	node, err := getComponentsYAML([]byte(newAppSpec))
+	if err != nil {
+		return nerrors.NewInternalErrorFrom(err, "error creating application")
+	}
+	a.componentsYAML[applicationName] = &ComponentsNode{
+		Spec: *node,
 	}
 
 	return nil

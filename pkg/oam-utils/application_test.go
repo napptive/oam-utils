@@ -21,7 +21,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const applicationFile = (`
+const applicationFile = `
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -33,20 +33,20 @@ data:
 apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
-  name: appapplication
+  name: application
   annotations:
     version: v1.0.0
     description: "Customized version of nginx"
 spec:
-  components:
+  components: # comment
     - name: component1
       type: webservice
       properties:
-        image: nginx:1.20.0
+        image: nginx:1.20.0 # Image
         ports:
-        - port: 80
+        - port: 80 # Port
           expose: true
-`)
+`
 const cm = `
 apiVersion: v1
 kind: ConfigMap
@@ -66,7 +66,7 @@ metadata:
 spec:
   components:
     - name: component1
-      type: worker
+      type: worker # Required worker
       properties:
         image: busybox
         cmd: ["sleep", "86400"]
@@ -152,7 +152,7 @@ spec:
 const spec = `
 components:
   - name: component1
-    type: webservice
+    type: webservice # Webservice type
     properties:
       image: 'nginx:1.20.0'
       ports:
@@ -260,7 +260,7 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 				gomega.Expect(err).Should(gomega.Succeed())
 				gomega.Expect(app).ShouldNot(gomega.BeNil())
 
-				err = app.ApplyParameters("appapplication", "", spec)
+				err = app.ApplyParameters("application", "", spec)
 				gomega.Expect(err).Should(gomega.Succeed())
 
 			})
@@ -276,6 +276,13 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 				apps, _, err := app.ToYAML()
 				gomega.Expect(err).Should(gomega.Succeed())
 				gomega.Expect(apps).ShouldNot(gomega.BeNil())
+
+				data := string(apps[0])
+				gomega.Expect(data).ShouldNot(gomega.BeEmpty())
+
+				parameters, err := app.GetParameters()
+				gomega.Expect(err).Should(gomega.Succeed())
+				gomega.Expect(parameters).ShouldNot(gomega.BeNil())
 
 				log.Info().Str("application", string(apps[0])).Msg("application YAML")
 
@@ -302,11 +309,11 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 
 			newName := "changed"
 			// Set Name
-			err = app.ApplyParameters("appapplication", newName, "")
+			err = app.ApplyParameters("application", newName, "")
 			gomega.Expect(err).Should(gomega.Succeed())
 
 			name := app.GetNames()
-			gomega.Expect(name["appapplication"]).Should(gomega.Equal(newName))
+			gomega.Expect(name["application"]).Should(gomega.Equal(newName))
 
 			apps, entities, err := app.ToYAML()
 			gomega.Expect(err).Should(gomega.Succeed())
@@ -316,16 +323,6 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 	})
 
 	ginkgo.Context("Getting parameters", func() {
-		ginkgo.It("Should be able to return the parameters of a simple application", func() {
-			files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(applicationFile)}}
-			app, err := NewApplication(files)
-			gomega.Expect(err).Should(gomega.Succeed())
-			gomega.Expect(app).ShouldNot(gomega.BeNil())
-
-			parameters, err := app.GetParameters()
-			gomega.Expect(err).Should(gomega.Succeed())
-			gomega.Expect(parameters).ShouldNot(gomega.BeEmpty())
-		})
 		ginkgo.It("Should be able to return the parameters of a catalog application with two applications", func() {
 			files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(completeApplication)}}
 			app, err := NewApplication(files)
