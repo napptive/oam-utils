@@ -173,18 +173,6 @@ func (a *Application) GetNames() map[string]string {
 func (a *Application) GetParameters() (map[string]string, error) {
 
 	parameters := make(map[string]string, 0)
-
-	/*
-		for appName, app := range a.apps {
-			// Marshal this object into YAML.
-			returned, err := convertToYAML(app.Spec.copyComponents())
-			if err != nil {
-				log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
-				return nil, nerrors.NewInternalError("error getting the parameters of %s application", appName)
-			}
-			parameters[appName] = string(returned)
-		}
-	*/
 	for appName, components := range a.componentsYAML {
 		appParameters, err := components.toYAML()
 		if err != nil {
@@ -200,20 +188,6 @@ func (a *Application) GetParameters() (map[string]string, error) {
 // GetConfigurations return the name and the componentSpec by application
 func (a *Application) GetConfigurations() (map[string]*InstanceConf, error) {
 	configurations := make(map[string]*InstanceConf, 0)
-	/*
-		for appName, app := range a.apps {
-			// Marshal this object into YAML (only components)
-			returned, err := convertToYAML(app.Spec.copyComponents())
-			if err != nil {
-				log.Error().Err(err).Str("appName", appName).Msg("error in Marshal ")
-				return nil, nerrors.NewInternalError("error getting the configuration of %s application", appName)
-			}
-			configurations[appName] = &InstanceConf{
-				Name:          appName,
-				ComponentSpec: string(returned),
-			}
-		}
-	*/
 	for appName, components := range a.componentsYAML {
 		appParameters, err := components.toYAML()
 		if err != nil {
@@ -256,8 +230,10 @@ func (a *Application) ApplyParameters(applicationName string, newName string, ne
 	if err != nil {
 		return nerrors.NewInternalErrorFrom(err, "error creating application")
 	}
-	a.componentsYAML[applicationName] = &ComponentsNode{
-		Spec: *node,
+	if node != nil {
+		a.componentsYAML[applicationName] = &ComponentsNode{
+			Spec: *node,
+		}
 	}
 
 	return nil
@@ -281,6 +257,7 @@ func (a *Application) ToYAML() ([][]byte, [][]byte, error) {
 	return appsFiles, a.entities, nil
 }
 
+/*
 func (a *Application) GetComponentSpec() ([]byte, error) {
 	for _, app := range a.apps {
 		// Marshal this object into YAML.
@@ -293,6 +270,7 @@ func (a *Application) GetComponentSpec() ([]byte, error) {
 	}
 	return nil, nil
 }
+*/
 
 func (a *Application) toApplicationSpec(spec string) (*ApplicationSpec, error) {
 
