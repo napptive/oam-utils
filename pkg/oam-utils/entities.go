@@ -61,13 +61,6 @@ type ApplicationDefinition struct {
 	Spec ApplicationSpec `json:"spec"`
 }
 
-// copyComponents returns an ApplicationSpec without any field except Components
-func (as *ApplicationSpec) copyComponents() *ApplicationSpec {
-	return &ApplicationSpec{
-		Components: as.Components,
-	}
-}
-
 // ComponentsNode with the components Spec in YAML (with comments)
 // This struct is required to return Application parameters:
 // components:
