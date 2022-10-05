@@ -69,10 +69,15 @@ func (as *ApplicationSpec) copyComponents() *ApplicationSpec {
 }
 
 // ComponentsNode with the components Spec in YAML (with comments)
+// This struct is required to return Application parameters:
+// components:
+// - name: component1
+// ...
 type ComponentsNode struct {
 	Spec ComponentsYAML
 }
 
+// toYAML converts a ComponentsNode to YAML
 func (cn *ComponentsNode) toYAML() (string, error) {
 	data, err := yamlV3.Marshal(&ComponentsYAML{Components: cn.Spec.Components})
 	if err != nil {
@@ -87,8 +92,8 @@ type ComponentsYAML struct {
 	Components yamlV3.Node
 }
 
-// getComponentsNode returns a ComponentNode from a YAML file
-func getComponentsNode(app []byte) (*ComponentsNode, error) {
+// getComponentsNodeFromYAML returns a ComponentNode from a YAML file
+func getComponentsNodeFromYAML(app []byte) (*ComponentsNode, error) {
 	var node ComponentsNode
 
 	if err := yamlV3.Unmarshal(app, &node); err != nil {
@@ -98,12 +103,14 @@ func getComponentsNode(app []byte) (*ComponentsNode, error) {
 	return &node, nil
 }
 
-func getComponentsYAML(app []byte) (*ComponentsYAML, error) {
+// getComponentsFromYAML returns a ComponentsYAML from a YAML file
+func getComponentsFromYAML(app []byte) (*ComponentsYAML, error) {
 	var node ComponentsYAML
 
 	if err := yamlV3.Unmarshal(app, &node); err != nil {
 		log.Error().Err(err).Msg("Error creating components yaml")
 		return nil, nerrors.NewInternalError("Error creating ComponentsYAML")
 	}
+
 	return &node, nil
 }

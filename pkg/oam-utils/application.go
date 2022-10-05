@@ -126,12 +126,15 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 				apps[appDefinition.Metadata.Name] = &appDefinition
 				//objs[appDefinition.Metadata.Name] = app
 
-				node, err := getComponentsNode(entity)
+				node, err := getComponentsNodeFromYAML(entity)
 				if err != nil {
 					log.Error().Err(err).Str("File", file.FileName).Msg("error creating application")
 					return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
 				}
 				nodes[appDefinition.Metadata.Name] = node
+
+				pp, _ := node.toYAML()
+				log.Debug().Str("pp", string(pp)).Msg("--")
 
 				// Metadata
 			case EntityType_METADATA:
@@ -226,7 +229,7 @@ func (a *Application) ApplyParameters(applicationName string, newName string, ne
 	}
 
 	// update nodes
-	node, err := getComponentsYAML([]byte(newAppSpec))
+	node, err := getComponentsFromYAML([]byte(newAppSpec))
 	if err != nil {
 		return nerrors.NewInternalErrorFrom(err, "error creating application")
 	}
@@ -257,21 +260,7 @@ func (a *Application) ToYAML() ([][]byte, [][]byte, error) {
 	return appsFiles, a.entities, nil
 }
 
-/*
-func (a *Application) GetComponentSpec() ([]byte, error) {
-	for _, app := range a.apps {
-		// Marshal this object into YAML.
-		returned, err := convertToYAML(app.Spec)
-		if err != nil {
-			log.Error().Err(err).Msg("error in Marshal ")
-			return nil, nerrors.NewInternalError("error converting to YAML")
-		}
-		return returned, nil
-	}
-	return nil, nil
-}
-*/
-
+// toApplicationSpec convert a YAML to ApplicationSpec
 func (a *Application) toApplicationSpec(spec string) (*ApplicationSpec, error) {
 
 	reader := strings.NewReader(spec)

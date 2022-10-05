@@ -111,6 +111,7 @@ func validateType(inputType *schema.GroupVersionKind, types []schema.GroupVersio
 	return false
 }
 
+// getGVK returns the group version kind from a YAML file
 func getGVK(entity []byte) (*schema.GroupVersionKind, *unstructured.Unstructured, error) {
 	// - Decode YAML manifest into unstructured.Unstructured
 	var decUnstructured = k8syaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
@@ -124,6 +125,7 @@ func getGVK(entity []byte) (*schema.GroupVersionKind, *unstructured.Unstructured
 	return gvk, unsObj, nil
 }
 
+// getGVKType converts a Group Version Kind to EntityType
 func getGVKType(gvk *schema.GroupVersionKind) EntityType {
 	if validateType(gvk, applicationGVK) {
 		return EntityType_APP
