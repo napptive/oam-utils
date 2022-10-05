@@ -124,7 +124,6 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 					return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
 				}
 				apps[appDefinition.Metadata.Name] = &appDefinition
-				//objs[appDefinition.Metadata.Name] = app
 
 				node, err := getComponentsNodeFromYAML(entity)
 				if err != nil {
@@ -132,9 +131,6 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 					return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
 				}
 				nodes[appDefinition.Metadata.Name] = node
-
-				pp, _ := node.toYAML()
-				log.Debug().Str("pp", string(pp)).Msg("--")
 
 				// Metadata
 			case EntityType_METADATA:
@@ -155,8 +151,7 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 	log.Debug().Int("apps", len(apps)).Int("entities", len(entities)).Msg("Apps configuration")
 
 	return &Application{
-		apps: apps,
-		//objs:           objs,
+		apps:           apps,
 		entities:       entities,
 		componentsYAML: nodes,
 	}, nil

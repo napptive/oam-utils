@@ -323,6 +323,16 @@ var _ = ginkgo.Describe("Handler test on log calls", func() {
 	})
 
 	ginkgo.Context("Getting parameters", func() {
+		ginkgo.It("Should be able to return the parameters of a simple application", func() {
+			files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(applicationFile)}}
+			app, err := NewApplication(files)
+			gomega.Expect(err).Should(gomega.Succeed())
+			gomega.Expect(app).ShouldNot(gomega.BeNil())
+
+			parameters, err := app.GetParameters()
+			gomega.Expect(err).Should(gomega.Succeed())
+			gomega.Expect(parameters).ShouldNot(gomega.BeEmpty())
+		})
 		ginkgo.It("Should be able to return the parameters of a catalog application with two applications", func() {
 			files := []*ApplicationFile{{FileName: "file1.yaml", Content: []byte(completeApplication)}}
 			app, err := NewApplication(files)
