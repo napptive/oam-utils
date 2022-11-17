@@ -92,67 +92,11 @@ func NewApplicationFromYAML(files [][]byte) (*Application, error) {
 	var appFiles []*ApplicationFile
 	for _, file := range files {
 		appFiles = append(appFiles, &ApplicationFile{
-			FileName: fmt.Sprintf("yaml"),
+			FileName: fmt.Sprintf("file.yaml"),
 			Content:  file,
 		})
 	}
 	return NewApplication(appFiles)
-
-	apps := make(map[string]*ApplicationDefinition, 0)
-	//objs := make(map[string]*unstructured.Unstructured, 0)
-	nodes := make(map[string]*ComponentsNode, 0)
-	var entities [][]byte
-
-	for _, file := range files {
-		resources, err := splitYAMLFile(file)
-		if err != nil {
-			log.Error().Err(err).Msg("error split application file")
-			return nil, nerrors.NewInternalErrorFrom(err, "cannot create application")
-		}
-
-		for _, entity := range resources {
-
-			gvk, app, err := getGVK(entity)
-			if err != nil {
-				// YAML file without GVK is not a oam or kubernetes entity, not stored.
-				continue
-			}
-			switch getGVKType(gvk) {
-			// Application
-			case EntityType_APP:
-				var appDefinition ApplicationDefinition
-				if err := convertFromUnstructured(app, &appDefinition); err != nil {
-					return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
-				}
-				apps[appDefinition.Metadata.Name] = &appDefinition
-
-				node, err := getComponentsNodeFromYAML(entity)
-				if err != nil {
-					return nil, nerrors.NewInternalErrorFrom(err, "error creating application")
-				}
-				nodes[appDefinition.Metadata.Name] = node
-
-				// Metadata
-			case EntityType_METADATA:
-				log.Debug().Msg("is metadata file")
-				// Others
-			default:
-				entities = append(entities, entity)
-			}
-
-		}
-	}
-	if len(apps) == 0 {
-		log.Warn().Msg("Error creating application, no application received")
-	}
-
-	log.Debug().Int("apps", len(apps)).Int("entities", len(entities)).Msg("Apps configuration")
-
-	return &Application{
-		apps:           apps,
-		entities:       entities,
-		componentsYAML: nodes,
-	}, nil
 }
 
 // NewApplication converts an oam application from an array of yaml files into an Application
