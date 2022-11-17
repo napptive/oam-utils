@@ -17,6 +17,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"strings"
 
@@ -87,6 +88,15 @@ func NewApplicationFromTGZ(rawApplication []byte) (*Application, error) {
 
 // NewApplicationFromYAML receives an array of YAML files and return an application
 func NewApplicationFromYAML(files [][]byte) (*Application, error) {
+
+	var appFiles []*ApplicationFile
+	for _, file := range files {
+		appFiles = append(appFiles, &ApplicationFile{
+			FileName: fmt.Sprintf("yaml"),
+			Content:  file,
+		})
+	}
+	return NewApplication(appFiles)
 
 	apps := make(map[string]*ApplicationDefinition, 0)
 	//objs := make(map[string]*unstructured.Unstructured, 0)
