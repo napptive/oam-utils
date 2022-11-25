@@ -17,7 +17,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"strings"
 
@@ -92,7 +91,7 @@ func NewApplicationFromYAML(files [][]byte) (*Application, error) {
 	var appFiles []*ApplicationFile
 	for _, file := range files {
 		appFiles = append(appFiles, &ApplicationFile{
-			FileName: fmt.Sprintf("file.yaml"),
+			FileName: "file.yaml",
 			Content:  file,
 		})
 	}
