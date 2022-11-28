@@ -85,6 +85,19 @@ func NewApplicationFromTGZ(rawApplication []byte) (*Application, error) {
 	return NewApplication(files)
 }
 
+// NewApplicationFromYAML receives an array of YAML files and return an application
+func NewApplicationFromYAML(files [][]byte) (*Application, error) {
+
+	var appFiles []*ApplicationFile
+	for _, file := range files {
+		appFiles = append(appFiles, &ApplicationFile{
+			FileName: "file.yaml",
+			Content:  file,
+		})
+	}
+	return NewApplication(appFiles)
+}
+
 // NewApplication converts an oam application from an array of yaml files into an Application
 func NewApplication(files []*ApplicationFile) (*Application, error) {
 
