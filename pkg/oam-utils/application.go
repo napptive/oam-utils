@@ -125,7 +125,7 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 			gvk, app, err := getGVK(entity)
 			if err != nil {
 				log.Error().Err(err).Str("File", file.FileName).Msg("yaml file without GVK")
-				return nil, nerrors.NewInternalError("cannot create application, error in file: %s [%s]", file.FileName, err.Error())
+				return nil, nerrors.NewInternalError("cannot create application, error in file: %s", file.FileName)
 			}
 			switch getGVKType(gvk) {
 			// Application
