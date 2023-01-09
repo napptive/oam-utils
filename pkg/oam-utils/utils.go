@@ -121,7 +121,7 @@ func getGVK(entity []byte) (*schema.GroupVersionKind, *unstructured.Unstructured
 	_, gvk, err := decUnstructured.Decode(entity, nil, unsObj)
 	if err != nil {
 		log.Error().Err(err).Msg("error getting GVK from an entity")
-		return nil, nil, nerrors.NewInternalError("error getting GVK from an entity")
+		return nil, nil, nerrors.NewInternalError("error getting GVK from an entity [%s]", err.Error())
 	}
 	return gvk, unsObj, nil
 }
