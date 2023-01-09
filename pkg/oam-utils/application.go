@@ -124,9 +124,8 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 
 			gvk, app, err := getGVK(entity)
 			if err != nil {
-				// YAML file without GVK is not a oam or kubernetes entity, not stored.
-				log.Warn().Str("File", file.FileName).Msg("yaml file without GVK")
-				continue
+				log.Error().Err(err).Str("File", file.FileName).Msg("yaml file without GVK")
+				return nil, nerrors.NewInternalError("cannot create application, error in file: %s [%s]", file.FileName, err.Error())
 			}
 			switch getGVKType(gvk) {
 			// Application
