@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/napptive/nerrors/pkg/nerrors"
@@ -102,7 +103,6 @@ func NewApplicationFromYAML(files [][]byte) (*Application, error) {
 func NewApplication(files []*ApplicationFile) (*Application, error) {
 
 	apps := make(map[string]*ApplicationDefinition, 0)
-	//objs := make(map[string]*unstructured.Unstructured, 0)
 	nodes := make(map[string]*ComponentsNode, 0)
 	var entities [][]byte
 
@@ -124,9 +124,8 @@ func NewApplication(files []*ApplicationFile) (*Application, error) {
 
 			gvk, app, err := getGVK(entity)
 			if err != nil {
-				// YAML file without GVK is not a oam or kubernetes entity, not stored.
-				log.Warn().Str("File", file.FileName).Msg("yaml file without GVK")
-				continue
+				log.Error().Err(err).Str("File", file.FileName).Msg("yaml file without GVK")
+				return nil, nerrors.NewInternalError("cannot create application, error in file: %s - %s", filepath.Base(file.FileName), err.Error())
 			}
 			switch getGVKType(gvk) {
 			// Application

@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package oam_utils
 
 import (
@@ -120,7 +121,7 @@ func getGVK(entity []byte) (*schema.GroupVersionKind, *unstructured.Unstructured
 	_, gvk, err := decUnstructured.Decode(entity, nil, unsObj)
 	if err != nil {
 		log.Error().Err(err).Msg("error getting GVK from an entity")
-		return nil, nil, nerrors.NewInternalError("error getting GVK from an entity")
+		return nil, nil, nerrors.NewInternalError("%s", err.Error())
 	}
 	return gvk, unsObj, nil
 }
